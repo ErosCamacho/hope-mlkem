@@ -430,8 +430,8 @@ module lfsr32 #(
     (* DONT_TOUCH = "TRUE" *) wire feedback = lfsr_reg[31] ^ lfsr_reg[21] ^ lfsr_reg[1] ^ lfsr_reg[0];
 
     always @(posedge clk) begin
-        // if (rst)            lfsr_reg <= SEED; 
-        if (rst)            lfsr_reg <= $random[31:0] | 32'h1; // Only for simulation purposes
+        if (rst)            lfsr_reg <= SEED; 
+        // if (rst)            lfsr_reg <= $random[31:0] | 32'h1; // Only for simulation purposes
         else if(enable)     lfsr_reg <= {lfsr_reg[30:0], feedback}; // Shift left and insert feedback
         else                lfsr_reg <= lfsr_reg;
     end

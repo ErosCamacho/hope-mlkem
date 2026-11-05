@@ -12,12 +12,12 @@
 // ***************************************************************************
 
 
-module AXI_IO_MLKEM #(
-    parameter MASKED = 1, // If MASKED = 1, N_BU = 4 and N_SHARES = 4. It is only programed this option
-	parameter SHUFF = 1, // If SHUFF = 1, the shares are shuffled in the masked implementation
+module AXI_IO_MLKEM #( 
+    parameter MASKED = 0, // If MASKED = 1, N_BU = 4 and N_SHARES = 4. It is only programed this option
+	parameter SHUFF = 0, // If SHUFF = 1, the shares are shuffled in the masked implementation
 	parameter SHUFF_DELAY = 540, // Number of cycles of delay for the shuffling (recomended: 540)
-	parameter KECCAK_PROT = 1, // If KECCAK_PROT = 1, the keccak module is protected with masking
-	parameter N_BU = 4 // If MASKED = 0, you can choose N_BU = 1 or 4 
+	parameter KECCAK_PROT = 0, // If KECCAK_PROT = 1, the keccak module is protected with masking
+	parameter N_BU = 1 // If MASKED = 0, you can choose N_BU = 1, 2 or 4 
     )(
     input           clk,
     input           rst,
@@ -41,6 +41,7 @@ module AXI_IO_MLKEM #(
     wire 	[255:0]     	o_seed_0, o_seed_1;
     wire 	[255:0]     	i_hek, o_hek, i_ss, o_ss;
 	wire    [1087:0]    	ek_in;
+	wire    [1087:0]    	ct_in;
 
 	wire   	[15:0]         	mode_encdec;
     wire                  	d_valid_encoder;
@@ -57,6 +58,9 @@ module AXI_IO_MLKEM #(
 	wire 					start_read_ek;
 	wire 					start_hek;
 	wire 					last_hek;
+	wire 					start_read_kb;
+	wire 					start_kb;
+	wire 					last_kb;
 
 	wire 					start_core;
 	wire 					end_op_core;
@@ -223,12 +227,16 @@ module AXI_IO_MLKEM #(
 				.i_ss           	(   i_ss            ),
 				.o_ss           	(   o_ss            ),
 				.ek_in              (   ek_in           ),
+				.ct_in              (   ct_in           ),
 
 				// Control Keccak
+				.start_keccak   	(   start_keccak   	),
 				.start_read_ek  	(   start_read_ek   ),
 				.start_hek      	(   start_hek       ),
 				.last_hek       	(   last_hek        ),
-				.start_keccak   	(   start_keccak   	),
+				.start_read_kb  	(   start_read_kb   ),
+				.start_kb      	    (   start_kb        ),
+				.last_kb       	    (   last_kb         ),
 
 				// Control Core signals
 				.start_core     	(   start_core      ),
@@ -275,6 +283,9 @@ module AXI_IO_MLKEM #(
 				.start_read_ek  	(   start_read_ek   ),
 				.start_hek      	(   start_hek       ),
 				.last_hek       	(   last_hek        ),
+				.start_read_kb  	(   start_read_kb   ),
+				.start_kb      	    (   start_kb        ),
+				.last_kb       	    (   last_kb         ),
 
 				// Input keccak
 				.i_seed_0       	(   i_seed_0        ),
@@ -286,6 +297,7 @@ module AXI_IO_MLKEM #(
 				.o_hek          	(   o_hek           ),
 				.o_ss           	(   o_ss            ),
 				.ek_in              (   ek_in           ),
+				.ct_in              (   ct_in           ),
 
 				// Encoder/Decoder signals
 				.mode_encdec        (   mode_encdec    	),
@@ -3464,7 +3476,7 @@ module IO_INTERFACE_MASKED #(
 
     // Input keccak
     output reg  [255:0]         i_seed_0, // d / rho
-    output reg  [255:0]         i_seed_1, // r
+    output reg  [255:0]         i_seed_1, // r / z
     input       [255:0]         o_seed_0, // rho
     input       [255:0]         o_seed_1, // sigma
     output reg  [255:0]         i_hek,
@@ -3472,12 +3484,16 @@ module IO_INTERFACE_MASKED #(
     input       [255:0]         o_hek,
     input       [255:0]         o_ss,
     output      [1087:0]        ek_in,
+    output      [1087:0]        ct_in,
 
 	// Control keccak
 	input                       start_keccak,
     input                       start_read_ek,
     output  reg                 start_hek,
     output  reg                 last_hek,
+    input                       start_read_kb,
+    output  reg                 start_kb,
+    output  reg                 last_kb,
 
     
     output reg                  start_core,
@@ -3567,6 +3583,7 @@ module IO_INTERFACE_MASKED #(
    reg          read_dk_int;
    reg          read_ct_int;
    reg          load_ek_reg;
+   reg          load_ct_reg;
    reg          read_m_int;
    reg          load_m_int;
 
@@ -3673,6 +3690,7 @@ module IO_INTERFACE_MASKED #(
         else    if(read_ss)     addr_r = add + 768; // It's not going to be used     
         else    if(load_ek_int) addr_r = add_int;
         else    if(load_ek_reg) addr_r = add_int;
+        else    if(load_ct_reg) addr_r = add_int + 512;
         else    if(load_dk_int) addr_r = add_int + 256; 
         else    if(load_ct_int) addr_r = add_int + 512;   
         else    if(load_m_int)  addr_r = add_int + 768; // decoding m
@@ -3812,6 +3830,7 @@ module IO_INTERFACE_MASKED #(
 	localparam START_OP        = 8'h70;
 	localparam SEL_READ        = 8'h80;
 	localparam LOAD_EK_REG     = 8'h90;
+	localparam LOAD_CT_REG     = 8'h91;
 	localparam LOAD_M_RESET    = 8'hA0;
 	localparam LOAD_M          = 8'hA1;
 	localparam READ_M          = 8'hB0;
@@ -3834,7 +3853,7 @@ module IO_INTERFACE_MASKED #(
     reg end_ek_1, end_ek_2, end_ek_3, end_ek_4;
     reg end_dk_1, end_dk_2, end_dk_3, end_dk_4;
     reg end_ct_1, end_ct_2, end_ct_3, end_ct_4, end_ct_l;
-    reg end_ek_reg;
+    reg end_ek_reg, end_ct_reg;
     reg end_m, end_reset_m;
     reg end_read_ek, end_read_dk, end_read_ct, end_read_ct_l;
     reg end_load_ek, end_load_dk, end_load_ct, end_load_ct_l;
@@ -3847,7 +3866,7 @@ module IO_INTERFACE_MASKED #(
 				        if(encap)
 				            ns_io = LOAD_EK_REG;
 				        else if(decap)
-				            ns_io = LOAD_DK_1;
+				            ns_io = LOAD_CT_REG;
 				        else    
 				            ns_io = START_OP;
 				   end
@@ -3858,6 +3877,11 @@ module IO_INTERFACE_MASKED #(
 				        ns_io = LOAD_EK_1;
 				    else
 				        ns_io = LOAD_EK_REG;
+				LOAD_CT_REG:
+				    if(end_ct_reg)
+				        ns_io = LOAD_DK_1;
+				    else
+				        ns_io = LOAD_CT_REG;
 				// --- LOAD EK --- //
 				LOAD_EK_1:
 				    if(end_ek_1)
@@ -4197,6 +4221,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4215,6 +4240,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4233,6 +4259,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4251,6 +4278,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4269,6 +4297,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4287,6 +4316,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4305,6 +4335,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4323,6 +4354,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4341,6 +4373,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4359,6 +4392,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4377,6 +4411,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4395,6 +4430,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 						  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4413,6 +4449,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4431,6 +4468,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4449,6 +4487,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4467,6 +4506,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4485,6 +4525,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 1;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4503,6 +4544,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 1;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4521,6 +4563,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 1;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4539,6 +4582,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 1;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4557,6 +4601,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 1;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4575,6 +4620,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4593,6 +4639,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4611,6 +4658,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4629,6 +4677,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4647,6 +4696,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4665,6 +4715,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4683,6 +4734,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4701,6 +4753,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 1;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4719,6 +4772,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 1;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4737,6 +4791,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 1;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4755,6 +4810,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 1;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4773,6 +4829,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 1;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4791,6 +4848,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 1;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4809,6 +4867,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 1;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4827,6 +4886,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 1;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4845,6 +4905,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 1;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4863,6 +4924,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 1;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4881,6 +4943,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 1;
 		                  start_core          = 0;
@@ -4899,6 +4962,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 1;
@@ -4917,6 +4981,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4935,6 +5000,26 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 1;
+		                  load_ct_reg         = 0;
+		                  load_m_int          = 0;
+		                  read_m_int          = 0;
+		                  start_core          = 0;
+		                  start_encoder       = 0;
+		                  start_decoder       = 0;
+		                  end_op              = {cmov, 1'b0};
+		                  sel_io              = 0;
+		                  control_dmu_encdec  = 9'b00_00_00_00_0;
+		                  gmh_decap           = 0;
+		              end
+		    LOAD_CT_REG:   begin
+		                  load_ek_int         = 0;
+		                  load_dk_int         = 0;
+		                  load_ct_int         = 0;
+		                  read_ek_int         = 0;
+		                  read_dk_int         = 0;
+		                  read_ct_int         = 0;
+		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 1;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4953,6 +5038,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 1;
@@ -4971,6 +5057,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -4989,6 +5076,7 @@ module IO_INTERFACE_MASKED #(
 		                  read_dk_int         = 0;
 		                  read_ct_int         = 0;
 		                  load_ek_reg         = 0;
+		                  load_ct_reg         = 0;
 		                  load_m_int          = 0;
 		                  read_m_int          = 0;
 		                  start_core          = 0;
@@ -5578,6 +5666,20 @@ module IO_INTERFACE_MASKED #(
 							load_m_reset	= 0;
 							reset_read_ct   = 0;	
 		              end
+		    LOAD_CT_REG:   begin
+		                  	{read_ek_4, read_ek_3, read_ek_2, read_ek_1}         		= 4'b0000;
+						  	{read_dk_4, read_dk_3, read_dk_2, read_dk_1}         		= 4'b0000;
+						  	{read_ct_4, read_ct_3, read_ct_2, read_ct_1, read_ct_l} 	= 5'b00000;
+							{load_ek_4, load_ek_3, load_ek_2, load_ek_1}         		= 4'b0000;
+							{load_dk_4, load_dk_3, load_dk_2, load_dk_1}         		= 4'b0000;
+							{load_ct_4, load_ct_3, load_ct_2, load_ct_1, load_ct_l} 	= 5'b00000;
+							{end_read_ek_st, end_read_dk_st, end_read_ct_st, end_read_ct_l_st} 		= 4'b0000;
+							read_m          = 0;
+							load_m          = 0;
+							load_ct_reset	= 0;
+							load_m_reset	= 0;
+							reset_read_ct   = 0;	
+		              end
 		   GMH:   begin
 		                  	{read_ek_4, read_ek_3, read_ek_2, read_ek_1}         		= 4'b0000;
 						  	{read_dk_4, read_dk_3, read_dk_2, read_dk_1}         		= 4'b0000;
@@ -6144,6 +6246,21 @@ module IO_INTERFACE_MASKED #(
 		 		  
 		end
 		
+		localparam CT_512     = 768 / 8;
+		localparam CT_768     = 1088 / 8;
+		localparam CT_1024    = 1568 / 8;
+		
+		always @* begin
+		  if(cs_io == LOAD_CT_REG) begin
+		              if(k_2 & add_int == CT_512 - 1)     end_ct_reg = 1;
+		      else    if(k_3 & add_int == CT_768 - 1)     end_ct_reg = 1;
+		      else    if(k_4 & add_int == CT_1024 - 1)    end_ct_reg = 1;
+		      else                                        end_ct_reg = 0;
+		  end
+		  else                                            end_ct_reg = 0;
+		 		  
+		end
+		
 		
 		wire end_ek_add = end_read_ek;
 		wire end_dk_add = end_read_dk;
@@ -6152,11 +6269,12 @@ module IO_INTERFACE_MASKED #(
 		always @(posedge clk) begin
 		  if(!rst | reset)                                                                    add_int <= 0;
 		  else begin
-		      if(end_ek_add | end_dk_add | end_ct_add | end_ek_reg)                           add_int <= 0;
+		      if(end_ek_add | end_dk_add | end_ct_add | end_ek_reg | end_ct_reg)              add_int <= 0;
 		      else if(load_m_reset | load_ct_reset | cs_io == SEL_READ)     				  add_int <= 0;
 		      else if(start_encoder & d_valid_enc)                                            add_int <= add_int + 1;
 		      else if(start_decoder & d_ready_decoder)                                        add_int <= add_int + 1;
 		      else if(load_ek_reg)                                                            add_int <= add_int + 1;
+		      else if(load_ct_reg)                                                            add_int <= add_int + 1;
 		      else                                                                            add_int <= add_int;
 		  end
 		end
@@ -6178,6 +6296,12 @@ module IO_INTERFACE_MASKED #(
         end
     end
     
+    // -- common keccak
+    reg act_keccak;
+	wire cond_load = (cs_io == START_OP & encap) | (cs_io == START_OP & decap);
+	always @(posedge clk) act_keccak <= (read_ek_int | read_dk_int | read_ct_int | cond_load) ? start_keccak : 1'b0;
+	wire upd_keccak;
+	assign upd_keccak = (start_keccak && !act_keccak) ? 1'b1 : 1'b0 ;
     
 	// -- ek_in --
 	
@@ -6206,12 +6330,6 @@ module IO_INTERFACE_MASKED #(
     .d_o     (   ek_in               )
     );
 	
-	reg act_keccak;
-	wire cond_load = (cs_io == START_OP & encap);
-	// always @(posedge clk) act_keccak <= (read_ek_int | read_dk_int | cond_load | !end_hek) ? start_keccak : 1'b0;
-	always @(posedge clk) act_keccak <= (read_ek_int | read_dk_int | cond_load) ? start_keccak : 1'b0;
-	wire upd_keccak;
-	assign upd_keccak = (start_keccak && !act_keccak) ? 1'b1 : 1'b0 ;
 	
 	always @(posedge clk) begin
 	   if(cs_io == IDLE) sel <= 0;
@@ -6286,7 +6404,7 @@ module IO_INTERFACE_MASKED #(
 	   else begin
 	       if(add_ek[4] & d_valid_enc)         start_hek <= 1;
 	       else if(load_ek_int)                start_hek <= 1;
-	       else                                        start_hek <= start_hek;     
+	       else                                start_hek <= start_hek;     
 	   end 
 	end
 	
@@ -6299,14 +6417,120 @@ module IO_INTERFACE_MASKED #(
 	       else                        last_hek <= last_hek;
 	   end
 	end
-	/*
+	
+	// -- ct_in --
+	
+	reg  [4:0] add_w_ct;
+	reg  [4:0] add_w_ct_p;
+	always @(posedge clk) add_w_ct_p <= add_w_ct;
+	
+	reg load_ct_reg_reg;   always @(posedge clk) load_ct_reg_reg <= load_ct_reg;
+	reg load_ct_r3;        always @(posedge clk) load_ct_r3 <= load_ct_reg;
+	reg en_w_ct; 
+	always @(posedge clk) en_w_ct <= (read_ct_int | load_ct_r3);
+	
+	reg [1087:0]   ct_in_reg;
+	
+	reg [4:0] sel_ct;
+	
+	RAMD64_CR #(
+    .COLS(17), // 1088
+    .ROWS(1)
+    ) CT_REG (
+    .clk    (   clk                 ),
+    .en_w   (   en_w_ct             ),
+    .add_w  (   add_w_ct_p          ),
+    .add_r  (   sel_ct              ),
+    .d_i     (   ct_in_reg           ),
+    .d_o     (   ct_in               )
+    );
+	
+	
 	always @(posedge clk) begin
-	   if(cs_io == IDLE)                   end_hek <= 1;
-	   else if(start_hek & !last_hek)      end_hek <= 0;
-	   else if(start_hek & last_hek)       end_hek <= 1;
-	   else                                end_hek <= end_hek;
+	   if(cs_io == IDLE)               sel_ct <= 0;
+	   else if (read_ct_int) begin
+	       if(upd_keccak & !last_kb)   sel_ct <= sel_ct + 1;
+	       else                        sel_ct <= sel_ct; 
+	   end
+	   else if (cond_load) begin
+	       if(upd_keccak & !last_kb)   sel_ct <= sel_ct + 1;
+	       else                        sel_ct <= sel_ct; 
+	   end
+	   else                            sel_ct <= sel_ct;
 	end
-    */
+	
+	wire op_reg_ct = read_ct_int | load_ct_reg;
+	
+	reg [7:0] add_ct;
+	always @(posedge clk) begin
+	   if(!op_reg_ct) begin 
+	       add_ct      <= 0;
+	       add_w_ct    <= 0;
+	   end
+	   else if (read_ct_int) begin 
+	       if(add_ct == 16) begin
+	         if(d_valid_enc) begin
+                add_ct       <= 0;
+                add_w_ct     <= add_w_ct + 1;
+             end
+             else begin
+                add_ct      <= add_ct;
+                add_w_ct    <= add_w_ct;
+             end
+	       end
+	       else begin
+               if(d_valid_enc) begin
+                    add_ct      <= add_ct + 1;
+                    add_w_ct    <= add_w_ct;
+               end
+               else begin
+                    add_ct      <= add_ct;
+                    add_w_ct    <= add_w_ct;
+               end
+           end
+	   end
+	   else if (load_ct_reg_reg) begin
+	       if(add_ct == 16) begin
+	           add_ct      <= 0;
+               add_w_ct    <= add_w_ct + 1;
+	       end
+	       else begin
+	           add_ct      <= add_ct + 1;
+               add_w_ct    <= add_w_ct;
+	       end
+	   end
+	
+	end
+	
+	always @(posedge clk) begin 
+	   if(cs_io == IDLE) begin
+           ct_in_reg <= 0;
+	   end
+	   else begin
+	       if(read_ct_int)             ct_in_reg[add_ct*64+:64] <= data_in_int;
+	       else if(load_ct_reg_reg)    ct_in_reg[add_ct*64+:64] <= data_out_ram;
+	       else                        ct_in_reg <= ct_in_reg;
+	   end
+	end 
+	
+	always @(posedge clk) begin
+	   if(cs_io == IDLE)                       start_kb <= 0;
+	   else begin
+	       if(add_ct[4] & d_valid_enc)         start_kb <= 1;
+	       else if(load_ct_int)                start_kb <= 1;
+	       else                                start_kb <= start_kb;     
+	   end 
+	end
+	
+	always @(posedge clk) begin
+	   if(cs_io == IDLE)               last_kb <= 0;
+	   else begin
+	       if(k_2 & sel == 5)          last_kb <= 1;
+	       else if(k_3 & sel == 7)     last_kb <= 1;
+	       else if(k_4 & sel == 11)    last_kb <= 1;
+	       else                        last_kb <= last_kb;
+	   end
+	end
 
 endmodule
 

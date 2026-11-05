@@ -28,7 +28,11 @@ module MAIN_CONTROL #(
     output          start_read_ek,
     input           start_hek,
     input           last_hek,
-
+    
+    output          start_read_kb,
+    input           start_kb,
+    input           last_kb,
+    
     input           gmh_decap,
     input           start_ed
     
@@ -69,6 +73,9 @@ module MAIN_CONTROL #(
     .start_read_ek      (   start_read_ek   ),
     .start_hek          (   start_hek       ),
     .last_hek           (   last_hek        ),
+    .start_read_kb      (   start_read_kb   ),
+    .start_kb           (   start_kb        ),
+    .last_kb            (   last_kb         ),
     .end_op             (   end_op_core     ),
     .gmh                (   gmh_decap       ),
     .start_ed           (   start_ed        )
@@ -319,6 +326,9 @@ module GLOBAL_CONTROL (
     output                      start_read_ek,
     input                       start_hek,
     input                       last_hek,
+    output                      start_read_kb,
+    input                       start_kb,
+    input                       last_kb,
     input                       gmh,
     input                       start_ed,
     output reg                  end_op
@@ -388,6 +398,17 @@ module GLOBAL_CONTROL (
 	localparam START_READ_EK   = 8'h50;
 	localparam SAVE_SEED       = 8'h60;
 	localparam UPDATE_SEED     = 8'h61;
+	localparam KB_START_READ   = 8'h70;
+	localparam KB_SEL_LOAD     = 8'h71;
+	localparam KB_LOAD_BASIC   = 8'h72;
+	localparam KB_LOAD_K_2     = 8'h73;
+	localparam KB_LOAD_K_3     = 8'h74;
+	localparam KB_LOAD_K_4     = 8'h75; 
+	localparam KB_LOAD         = 8'h76; 
+	localparam KB_START        = 8'h77;
+	localparam KB_EVAL         = 8'h78;
+	localparam KB_ADD          = 8'h79;
+	localparam KB_SAVE         = 8'h7A;
 	
 	//--*** STATE register **--//
 	reg [7:0] cs; // current_state
@@ -402,8 +423,9 @@ module GLOBAL_CONTROL (
     
     //--*** STATE Transition **--//
 	
-	assign start_op        =   (cs == START_OP) ? 1 : 0;
-	assign start_read_ek   =   (cs == HEK_START_READ) ? 1 : 0; 
+	assign start_op        =   (cs == START_OP)        ? 1 : 0;
+	assign start_read_ek   =   (cs == HEK_START_READ)  ? 1 : 0;
+	assign start_read_kb   =   (cs == KB_START_READ)   ? 1 : 0; 
 	
 	reg do_last;
 	always @(posedge clk) begin
@@ -411,6 +433,15 @@ module GLOBAL_CONTROL (
 	   else begin
 	       if(cs == HEK_EVAL & last_hek) do_last <= 1;
 	       else                          do_last <= do_last;      
+	   end
+	end
+	
+	reg do_last_kb;
+	always @(posedge clk) begin
+	   if(cs == IDLE) do_last_kb <= 0;
+	   else begin
+	       if(cs == KB_EVAL & last_kb)  do_last_kb <= 1;
+	       else                         do_last_kb <= do_last_kb;      
 	   end
 	end
 	
@@ -423,7 +454,7 @@ module GLOBAL_CONTROL (
 				        else if(encap)
 				            ns = SAVE_SEED;
 				        else if(decap & !gmh)
-				            ns = START_OP;
+				            ns = KB_START_READ;
 				        else if(decap & gmh)
 				            ns = UPDATE_SEED;
 				        else
@@ -521,6 +552,46 @@ module GLOBAL_CONTROL (
 				        ns = START_OP;
 			       else 
 				        ns = END_OP;
+				KB_START_READ:
+				    if(start_kb)
+				        ns = KB_SEL_LOAD;
+				    else
+				        ns = KB_START_READ;
+				KB_SEL_LOAD:
+				    if(last_kb) begin
+				        if(k_2) 
+				            ns = KB_LOAD_K_2;
+				        else if(k_3)
+				            ns = KB_LOAD_K_3;
+				        else
+				            ns = KB_LOAD_K_4;
+				    end
+				    else
+				        ns = KB_LOAD_BASIC;
+				KB_LOAD_K_2:
+				    ns = KB_LOAD;
+				KB_LOAD_K_3:
+				    ns = KB_LOAD;  
+				KB_LOAD_K_4:
+				    ns = KB_LOAD;
+				KB_LOAD_BASIC:
+				    ns = KB_LOAD;   
+				KB_LOAD:
+				    ns = KB_START;
+				KB_START:
+				    if(end_op_keccak)
+				        ns = KB_ADD;
+				    else    
+				        ns = KB_START;
+				KB_ADD:
+				    ns = KB_EVAL;
+			    KB_EVAL:
+			        if(do_last_kb)
+			            ns = KB_SAVE;
+			        else
+			            ns = KB_SEL_LOAD;
+			    KB_SAVE:
+			            ns = START_OP;
 			  default:
 					    ns = IDLE;
 		  endcase		
@@ -746,6 +817,136 @@ module GLOBAL_CONTROL (
                             start_gen   = 0;
                             read_gen    = 1;
                             mode_gen    = 4'h7;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end
+          KB_SEL_LOAD:  begin
+                            reset_k     = 0;  
+                            load_k      = 0;
+                            start_k     = 0;
+                            read_k      = 0;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 0;
+                            mode_gen    = 4'h0;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end 
+          KB_LOAD_BASIC:  begin
+                            reset_k     = 0;  
+                            load_k      = 0;
+                            start_k     = 0;
+                            read_k      = 0;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 0;
+                            mode_gen    = 4'hB;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end   
+          KB_LOAD_K_2:   begin
+                            reset_k     = 0;  
+                            load_k      = 0;
+                            start_k     = 0;
+                            read_k      = 0;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 0;
+                            mode_gen    = 4'hC;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end
+          KB_LOAD_K_3:   begin
+                            reset_k     = 0;  
+                            load_k      = 0;
+                            start_k     = 0;
+                            read_k      = 0;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 0;
+                            mode_gen    = 4'hD;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end
+          KB_LOAD_K_4:   begin
+                            reset_k     = 0;  
+                            load_k      = 0;
+                            start_k     = 0;
+                            read_k      = 0;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 0;
+                            mode_gen    = 4'hE;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end
+          KB_LOAD:   begin
+                            reset_k     = 0;  
+                            load_k      = 1;
+                            start_k     = 0;
+                            read_k      = 0;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 0;
+                            mode_gen    = 4'h0;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end             
+          KB_START:    begin
+                            reset_k     = 0;  
+                            load_k      = 0;
+                            start_k     = 1;
+                            read_k      = 0;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 0;
+                            mode_gen    = 4'h0;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end  
+          KB_ADD:    begin
+                            reset_k     = 0;  
+                            load_k      = 0;
+                            start_k     = 1;
+                            read_k      = 0;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 0;
+                            mode_gen    = 4'h0;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end 
+          KB_EVAL:    begin
+                            reset_k     = 0;  
+                            load_k      = 0;
+                            start_k     = 1;
+                            read_k      = 0;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 0;
+                            mode_gen    = 4'h0;
+                            sel_global  = 1;
+                            end_op      = 0;
+                        end   
+          KB_SAVE:    begin
+                            reset_k     = 0;  
+                            load_k      = 0;
+                            start_k     = 0;
+                            read_k      = 1;
+                            reset_gen   = 0;
+                            load_gen    = 0;
+                            start_gen   = 0;
+                            read_gen    = 1;
+                            mode_gen    = 4'hF;
                             sel_global  = 1;
                             end_op      = 0;
                         end  
