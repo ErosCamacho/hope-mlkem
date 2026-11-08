@@ -24,13 +24,13 @@ module tb_mlkem_v2();
 
     parameter PERIOD = 10;
     parameter CYCLES = 10;
-    parameter VERBOSE = 2;
-    parameter N_TEST = 1;
-    parameter RANDOM = 0;
+    parameter VERBOSE = 1;
+    parameter N_TEST = 10;
+    parameter RANDOM = 1;
     parameter VERBOSE_RANDOM = 0;
     
     parameter MASKED = 0;
-    parameter N_BU = 1;
+    parameter N_BU = 4;
     parameter SHUFF = 1;
     parameter SHUFF_DELAY = 540;
     parameter KECCAK_PROT = 0;
@@ -115,7 +115,9 @@ module tb_mlkem_v2();
         .flag_op(flag_op));
         
     initial begin
-    K = 3;
+    
+    K = 2;
+    
     add = 0;
     r_in = 0;
     mode = 0;
@@ -126,22 +128,18 @@ module tb_mlkem_v2();
     rst = 0; oper = RESET; #(CYCLES * 11 * PERIOD); // RESET MODULE
     rst = 1; oper = RESET; #(CYCLES * 10 * PERIOD); // INIT MO
     
-    K = 3; GEN_COINS(); TEST();
+    // GEN_COINS(); TEST();
     
-    /*
     for (test = 0; test < N_TEST; test = test + 1) begin
         K = 2; GEN_COINS(); TEST();
     end
-    */
-    /*
     for (test = 0; test < N_TEST; test = test + 1) begin
         K = 3; GEN_COINS(); TEST();
     end
-    
     for (test = 0; test < N_TEST; test = test + 1) begin
         K = 4; GEN_COINS(); TEST();
     end
-    */
+    
     
     /*
     for (test = 0; test < N_TEST; test = test + 1) begin
@@ -531,6 +529,7 @@ task GEN_COINS();
         
         
         // ---- LOAD CIPHERTEXT ---- //
+        // ct_array[LEN_CT - 1] = 8'h00;
         rst = 1; oper = LOAD_CT;  #(CYCLES * PERIOD); // LOAD CT
         for (i = 0; i < (LEN_CT / 8); i = i + 1) begin
             add     = i;                                    #(CYCLES * PERIOD);

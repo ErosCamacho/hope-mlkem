@@ -13,7 +13,9 @@ module ARITHMETIC_UNIT_N_BU_4 (
     input  [255:0]      i_ss,
     output [255:0]      o_hek,
     output [255:0]      o_ss,
+    output [255:0]      o_kb,
     input   [1087:0]    ek_in,
+    input   [1087:0]    ct_in,
     input   [11:0]      ctl_keccak,
     output              end_op_keccak,
     input   [7:0]       ctl_cbd,
@@ -113,6 +115,7 @@ module ARITHMETIC_UNIT_N_BU_4 (
         .read       (   read_gen            ),
         .mode_gen   (   mode_gen            ),
         .ek_pke_in  (   ek_in               ),
+        .ct_in      (   ct_in               ),
         .i_seed_0   (   i_seed_0            ),
         .i_seed_1   (   i_seed_1            ),
         .o_seed_0   (   o_seed_0            ),
@@ -123,6 +126,7 @@ module ARITHMETIC_UNIT_N_BU_4 (
         .o_hek      (   o_hek               ),
         .i_ss       (   i_ss                ),
         .o_ss       (   o_ss                ),
+        .o_kb       (   o_kb                ),
         .do_keccak  (   do_keccak           ),
         .di_keccak  (   di_keccak           )
     );
@@ -706,7 +710,9 @@ module ARITHMETIC_UNIT_N_BU_2 (
     input  [255:0]      i_ss,
     output [255:0]      o_hek,
     output [255:0]      o_ss,
+    output [255:0]      o_kb,
     input   [1087:0]    ek_in,
+    input   [1087:0]    ct_in,
     input   [11:0]      ctl_keccak,
     output              end_op_keccak,
     input   [7:0]       ctl_cbd,
@@ -782,6 +788,7 @@ module ARITHMETIC_UNIT_N_BU_2 (
         .read       (   read_gen            ),
         .mode_gen   (   mode_gen            ),
         .ek_pke_in  (   ek_in               ),
+        .ct_in      (   ct_in               ),
         .i_seed_0   (   i_seed_0            ),
         .i_seed_1   (   i_seed_1            ),
         .o_seed_0   (   o_seed_0            ),
@@ -792,6 +799,7 @@ module ARITHMETIC_UNIT_N_BU_2 (
         .o_hek      (   o_hek               ),
         .i_ss       (   i_ss                ),
         .o_ss       (   o_ss                ),
+        .o_kb       (   o_kb                ),
         .do_keccak  (   do_keccak           ),
         .di_keccak  (   di_keccak           )
     );
@@ -1186,6 +1194,7 @@ module ARITHMETIC_UNIT_N_BU_1 (
     input  [255:0]      i_ss,
     output [255:0]      o_hek,
     output [255:0]      o_ss,
+    output [255:0]      o_kb,
     input   [1087:0]    ek_in,
     input   [1087:0]    ct_in,
     input   [11:0]      ctl_keccak,
@@ -1262,6 +1271,7 @@ module ARITHMETIC_UNIT_N_BU_1 (
         .o_hek      (   o_hek               ),
         .i_ss       (   i_ss                ),
         .o_ss       (   o_ss                ),
+        .o_kb       (   o_kb                ),
         .do_keccak  (   do_keccak           ),
         .di_keccak  (   di_keccak           )
     );

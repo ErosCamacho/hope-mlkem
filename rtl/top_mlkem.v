@@ -30,6 +30,7 @@
         input   [255:0]         i_ss,
         output  [255:0]         o_hek,
         output  [255:0]         o_ss,
+        output  [255:0]         o_kb,
         input   [1087:0]        ek_in,
         input   [1087:0]        ct_in,
 
@@ -100,7 +101,9 @@
                 .o_hek              (   o_hek           ),
                 .i_ss               (   i_ss            ),
                 .o_ss               (   o_ss            ),
+                .o_kb               (   o_kb            ),
                 .ek_in              (   ek_in           ),
+                .ct_in              (   ct_in           ),
                 
                 // keccak signals
                 .ctl_keccak         (   ctl_keccak      ),
@@ -156,7 +159,9 @@
                 .o_hek              (   o_hek           ),
                 .i_ss               (   i_ss            ),
                 .o_ss               (   o_ss            ),
+                .o_kb               (   o_kb            ),
                 .ek_in              (   ek_in           ),
+                .ct_in              (   ct_in           ),
                 
                 // keccak signals
                 .ctl_keccak         (   ctl_keccak      ),
@@ -212,6 +217,7 @@
                 .o_hek              (   o_hek           ),
                 .i_ss               (   i_ss            ),
                 .o_ss               (   o_ss            ),
+                .o_kb               (   o_kb            ),
                 .ek_in              (   ek_in           ),
                 .ct_in              (   ct_in           ),
                 

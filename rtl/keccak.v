@@ -35,6 +35,7 @@ module keccak(
         end
     end    
     
+    
     always @(posedge clk) begin
         if(!rst) rndc_r <= 0;
         else begin
