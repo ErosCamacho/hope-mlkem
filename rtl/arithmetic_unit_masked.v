@@ -17,7 +17,9 @@ module ARITHMETIC_UNIT_MASKED_N_BU_4 #(
     input  [255:0]      i_ss,
     output [255:0]      o_hek,
     output [255:0]      o_ss,
+    output [255:0]      o_kb,
     input   [1087:0]    ek_in,
+    input   [1087:0]    ct_in,
     input   [11:0]      ctl_keccak,
     output              end_op_keccak,
     input   [7:0]       ctl_cbd,
@@ -184,6 +186,7 @@ module ARITHMETIC_UNIT_MASKED_N_BU_4 #(
             .read       (   read_gen            ),
             .mode_gen   (   mode_gen            ),
             .ek_pke_in  (   ek_in               ),
+            .ct_in      (   ct_in               ),
             .i_seed_0   (   i_seed_0            ),
             .i_seed_1   (   i_seed_1            ),
             .o_seed_0   (   o_seed_0            ),
@@ -194,6 +197,7 @@ module ARITHMETIC_UNIT_MASKED_N_BU_4 #(
             .o_hek      (   o_hek               ),
             .i_ss       (   i_ss                ),
             .o_ss       (   o_ss                ),
+            .o_kb       (   o_kb                ),
             .do_keccak  (   do_keccak           ),
             .do_keccak_s1  (   keccak_out_s_1       ),
             .do_keccak_s2  (   keccak_out_s_2       ),
@@ -858,7 +862,9 @@ module ARITHMETIC_UNIT_MASKED_N_BU_2 #(
     input  [255:0]      i_ss,
     output [255:0]      o_hek,
     output [255:0]      o_ss,
+    output [255:0]      o_kb,
     input   [1087:0]    ek_in,
+    input   [1087:0]    ct_in,
     input   [11:0]      ctl_keccak,
     output              end_op_keccak,
     input   [7:0]       ctl_cbd,
@@ -993,6 +999,7 @@ module ARITHMETIC_UNIT_MASKED_N_BU_2 #(
             .read       (   read_gen            ),
             .mode_gen   (   mode_gen            ),
             .ek_pke_in  (   ek_in               ),
+            .ct_in      (   ct_in               ),
             .i_seed_0   (   i_seed_0            ),
             .i_seed_1   (   i_seed_1            ),
             .o_seed_0   (   o_seed_0            ),
@@ -1003,6 +1010,7 @@ module ARITHMETIC_UNIT_MASKED_N_BU_2 #(
             .o_hek      (   o_hek               ),
             .i_ss       (   i_ss                ),
             .o_ss       (   o_ss                ),
+            .o_kb       (   o_kb                ),
             .do_keccak  (   do_keccak           ),
             .do_keccak_s1  (   keccak_out_s_1       ),
             .do_keccak_s2  (   keccak_out_s_2       ),
@@ -1441,6 +1449,7 @@ module ARITHMETIC_UNIT_MASKED_N_BU_2 #(
             out_2_12[23:00], out_1_12[23:00], out_2_02[23:00], out_1_02[23:00],
             out_2_11[23:00], out_1_11[23:00], out_2_01[23:00], out_1_01[23:00]};
     
+    /*
     ENCODER_COMPRESS_MASKED_N_BU_2 ENCODER_COMPRESS_MASKED_N_BU_2 (
     // ENCODER_COMPRESS_MASKED_N_BU_2_CLK ENCODER_COMPRESS_MASKED_N_BU_2_CLK (
         .clk        (   clk             ),
@@ -1451,6 +1460,7 @@ module ARITHMETIC_UNIT_MASKED_N_BU_2 #(
         .input_data (   input_encoder   ),
         .out_data   (        )
     );
+    */
     
     // ENCODER_COMPRESS_MASKED_N_BU_2 ENCODER_COMPRESS_MASKED_N_BU_2 (
     ENCODER_COMPRESS_MASKED_N_BU_2_CLK ENCODER_COMPRESS_MASKED_N_BU_2_CLK (

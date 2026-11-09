@@ -15,11 +15,14 @@
         output                  end_op_core,
         input                   sel_io,
 
-        // Control keccak
+       // Control keccak
 	    output                  start_keccak,
         output                  start_read_ek,
         input                   start_hek,
         input                   last_hek,
+        output                  start_read_kb,
+        input                   start_kb,
+        input                   last_kb,
         
         // Input keccak
         input   [255:0]         i_seed_0, // d / rho
@@ -30,7 +33,9 @@
         input   [255:0]         i_ss,
         output  [255:0]         o_hek,
         output  [255:0]         o_ss,
+        output  [255:0]         o_kb,
         input   [1087:0]        ek_in,
+        input   [1087:0]        ct_in,
 
         // Encoder/Decoder signals
         input   [15:0]          mode_encdec,
@@ -120,7 +125,9 @@
                 .o_hek              (   o_hek           ),
                 .i_ss               (   i_ss            ),
                 .o_ss               (   o_ss            ),
+                .o_kb               (   o_kb            ),
                 .ek_in              (   ek_in           ),
+                .ct_in              (   ct_in           ),
                 
                 // keccak signals
                 .ctl_keccak         (   ctl_keccak      ),
@@ -197,7 +204,9 @@
                 .o_hek              (   o_hek           ),
                 .i_ss               (   i_ss            ),
                 .o_ss               (   o_ss            ),
+                .o_kb               (   o_kb            ),
                 .ek_in              (   ek_in           ),
+                .ct_in              (   ct_in           ),
                 
                 // keccak signals
                 .ctl_keccak         (   ctl_keccak      ),
@@ -294,6 +303,10 @@
         .start_read_ek      (   start_read_ek       ),
         .start_hek          (   start_hek           ),
         .last_hek           (   last_hek            ),
+        // kb signals
+        .start_read_kb      (   start_read_kb       ),
+        .start_kb           (   start_kb            ),
+        .last_kb            (   last_kb             ),
 
         // Encap from decap signals
         .gmh_decap          (   gmh_decap           ),

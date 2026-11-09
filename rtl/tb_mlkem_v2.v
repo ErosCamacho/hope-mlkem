@@ -29,11 +29,11 @@ module tb_mlkem_v2();
     parameter RANDOM = 1;
     parameter VERBOSE_RANDOM = 0;
     
-    parameter MASKED = 0;
+    parameter MASKED = 1;
     parameter N_BU = 4;
     parameter SHUFF = 1;
     parameter SHUFF_DELAY = 540;
-    parameter KECCAK_PROT = 0;
+    parameter KECCAK_PROT = 1;
     
     parameter RESET         = 4'h0;
     parameter LOAD_R0       = 4'h1;

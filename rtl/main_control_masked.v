@@ -31,6 +31,10 @@ module MAIN_CONTROL_MASKED #(
     output          start_read_ek,
     input           start_hek,
     input           last_hek,
+    
+    output          start_read_kb,
+    input           start_kb,
+    input           last_kb,
 
     input           gmh_decap,
     input           start_ed,
@@ -68,6 +72,9 @@ module MAIN_CONTROL_MASKED #(
     .start_read_ek      (   start_read_ek   ),
     .start_hek          (   start_hek       ),
     .last_hek           (   last_hek        ),
+    .start_read_kb      (   start_read_kb   ),
+    .start_kb           (   start_kb        ),
+    .last_kb            (   last_kb         ),
     .end_op             (   end_op_core     ),
     .gmh                (   gmh_decap       ),
     .start_ed           (   start_ed        )

@@ -13,11 +13,11 @@
 
 
 module AXI_IO_MLKEM #( 
-    parameter MASKED = 0, // If MASKED = 1, N_BU = 4 and N_SHARES = 4. It is only programed this option
-	parameter SHUFF = 0, // If SHUFF = 1, the shares are shuffled in the masked implementation
+    parameter MASKED = 1, // If MASKED = 1, N_BU = 4 and N_SHARES = 4. It is only programed this option
+	parameter SHUFF = 1, // If SHUFF = 1, the shares are shuffled in the masked implementation
 	parameter SHUFF_DELAY = 540, // Number of cycles of delay for the shuffling (recomended: 540)
-	parameter KECCAK_PROT = 0, // If KECCAK_PROT = 1, the keccak module is protected with masking
-	parameter N_BU = 1 // If MASKED = 0, you can choose N_BU = 1, 2 or 4 
+	parameter KECCAK_PROT = 1, // If KECCAK_PROT = 1, the keccak module is protected with masking
+	parameter N_BU = 2 // If MASKED = 0, you can choose N_BU = 1, 2 or 4 
     )(
     input           clk,
     input           rst,
@@ -437,6 +437,9 @@ module AXI_IO_MLKEM #(
 				.start_read_ek  	(   start_read_ek   ),
 				.start_hek      	(   start_hek       ),
 				.last_hek       	(   last_hek        ),
+				.start_read_kb  	(   start_read_kb   ),
+				.start_kb      	    (   start_kb       ),
+				.last_kb       	    (   last_kb        ),
 
 				// Input keccak
 				.i_seed_0       	(   i_seed_0        ),
@@ -447,7 +450,9 @@ module AXI_IO_MLKEM #(
 				.i_ss           	(   i_ss            ),
 				.o_hek          	(   o_hek           ),
 				.o_ss           	(   o_ss            ),
+				.o_kb           	(   o_kb            ),
 				.ek_in              (   ek_in           ),
+				.ct_in              (   ct_in           ),
 
 				// Encoder/Decoder signals
 				.mode_encdec        (   mode_encdec    	),

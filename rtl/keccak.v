@@ -292,6 +292,7 @@ module gen_input_keccak_MASKED_KECCAK (
     input                   load,
     input                   read,
     input       [1087:0]    ek_pke_in, // 384
+    input       [1087:0]    ct_in,
     input       [3:0]       mode_gen,
     input       [7:0]       i,
     input       [7:0]       j,
@@ -303,6 +304,7 @@ module gen_input_keccak_MASKED_KECCAK (
     input       [255:0]     i_ss,
     output      [255:0]     o_hek,
     output      [255:0]     o_ss,
+    output      [255:0]     o_kb,
     input       [1599:0]    do_keccak,
     input       [1599:0]    do_keccak_s1, // share 1
     input       [1599:0]    do_keccak_s2, // share 2
@@ -437,9 +439,11 @@ module gen_input_keccak_MASKED_KECCAK (
     
     reg [255:0]     hek;
     reg [255:0]     ss;
+    reg [255:0]     kb;
     
     assign o_hek = hek;
     assign o_ss = ss;
+    assign o_kb = kb;
     
     always @(posedge clk) begin
         if(!rst)            hek <= 0;
@@ -459,6 +463,12 @@ module gen_input_keccak_MASKED_KECCAK (
         else                                ss <= ss;
     end
     
+    always @(posedge clk) begin
+        if(!rst)                            kb <= 0;
+        else if (read & mode_gen == 4'hF)   kb <= do_keccak[255:000]; // J(z|c)
+        else                                kb <= kb;
+    end
+    
 
     always @(posedge clk) begin
         if(!rst) begin
@@ -476,6 +486,10 @@ module gen_input_keccak_MASKED_KECCAK (
                 4'h8: di_keccak <= {{64{8'h00}}, 8'h80,{38{8'h00}}, 8'h06, o_seed_0, ek_pke_in[511:000]} ^ do_keccak; // k = 3
                 4'h9: di_keccak <= {{64{8'h00}}, 8'h80,{62{8'h00}}, 8'h06, o_seed_0, ek_pke_in[319:000]} ^ do_keccak; // k = 4
                 4'hA: di_keccak <= {{128{8'h00}}, 8'h80,{6{8'h00}}, 8'h06, hek, i_ss}; // G(m,hek)
+                4'hB: di_keccak <= {{64{8'h00}}, ct_in} ^ do_keccak; // ct_in[1088:000] BS = 1088
+                4'hC: di_keccak <= {{64{8'h00}}, 8'h80,{14{8'h00}},  8'h06, i_seed_1, ct_in[703:000]} ^ do_keccak; // k = 2
+                4'hD: di_keccak <= {{64{8'h00}}, 8'h80,{102{8'h00}}, 8'h06, i_seed_1} ^ do_keccak; // k = 3
+                4'hE: di_keccak <= {{64{8'h00}}, 8'h80,{30{8'h00}},  8'h06, i_seed_1, ct_in[575:000]} ^ do_keccak; // k = 4
                 default: di_keccak <= di_keccak;
             endcase
         end
